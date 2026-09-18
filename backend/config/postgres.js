@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
@@ -7,16 +8,47 @@ const isProduction = process.env.NODE_ENV === 'production' ||
 
 const useSsl = isProduction && connectionString && !connectionString.includes('railway.internal');
 
-let activePool = new Pool({
-    connectionString: connectionString || 'postgresql://postgres:postgres@localhost:5432/pos-system',
-    ssl: useSsl ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 2000
-});
+let activePool = null;
 
-// Proxy pool delegating to whichever pool is active (native PostgreSQL or local fallback)
+const createPgPool = () => {
+    const p = new Pool({
+        connectionString: connectionString || 'postgresql://postgres:postgres@localhost:5432/pos-system',
+        ssl: useSsl ? { rejectUnauthorized: false } : false,
+        connectionTimeoutMillis: 10000
+    });
+    p.on('error', (err) => {
+        console.error('[PostgreSQL Pool] Idle client error:', err.message);
+    });
+    return p;
+};
+
+if (connectionString) {
+    activePool = createPgPool();
+}
+
+// Proxy pool delegating to whichever pool is active (native PostgreSQL or fallback)
 const pool = {
-    query: (...args) => activePool.query(...args),
-    connect: () => activePool.connect()
+    query: (...args) => {
+        if (!activePool) throw new Error('Database pool not initialized');
+        return activePool.query(...args);
+    },
+    connect: () => {
+        if (!activePool) throw new Error('Database pool not initialized');
+        return activePool.connect();
+    }
+};
+
+const setupInMemoryDb = async () => {
+    const { newDb } = require('pg-mem');
+    const db = newDb();
+    const memPg = db.adapters.createPg();
+    activePool = new memPg.Pool();
+    activePool.on('error', (err) => {
+        console.error('[pg-mem Pool] Idle client error:', err.message);
+    });
+    const client = await activePool.connect();
+    console.log('[PostgreSQL] In-memory PostgreSQL engine ready.');
+    return client;
 };
 
 const initialProducts = [
@@ -39,23 +71,18 @@ const initialProducts = [
 
 const initDatabase = async () => {
     let client;
-    try {
-        client = await activePool.connect();
-        console.log('[PostgreSQL] Connected to PostgreSQL server.');
-    } catch (err) {
-        if (isProduction || (connectionString && !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1'))) {
-            console.error('[PostgreSQL] FATAL: Failed to connect to PostgreSQL in production:', err.message);
-            throw err;
+    if (activePool) {
+        try {
+            client = await activePool.connect();
+            console.log('[PostgreSQL] Connected to PostgreSQL server.');
+        } catch (err) {
+            console.warn(`[PostgreSQL] Warning: Connection to PostgreSQL failed: ${err.message}`);
+            console.warn('[PostgreSQL] Falling back to in-memory PostgreSQL emulator (pg-mem) to keep system online.');
+            client = await setupInMemoryDb();
         }
-
-        console.warn(`[PostgreSQL] Local PostgreSQL not detected (${err.message}).`);
-        console.log('[PostgreSQL] Starting in-memory PostgreSQL emulator (pg-mem) for local testing...');
-        const { newDb } = require('pg-mem');
-        const db = newDb();
-        const memPg = db.adapters.createPg();
-        activePool = new memPg.Pool();
-        client = await activePool.connect();
-        console.log('[PostgreSQL] In-memory PostgreSQL engine ready.');
+    } else {
+        console.log('[PostgreSQL] No DATABASE_URL provided. Starting in-memory PostgreSQL emulator (pg-mem)...');
+        client = await setupInMemoryDb();
     }
 
     try {

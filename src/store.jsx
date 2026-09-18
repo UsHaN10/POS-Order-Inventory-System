@@ -26,6 +26,13 @@ export const StoreProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
   const [currentCheckoutId, setCurrentCheckoutId] = useState(null);
 
+  const logout = () => {
+    setToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
+
   useEffect(() => {
     const reqEject = axios.interceptors.request.use((config) => {
       if (token) {
@@ -57,13 +64,6 @@ export const StoreProvider = ({ children }) => {
     localStorage.setItem('token', res.data.token);
     localStorage.setItem('user', JSON.stringify(res.data.user));
     return res.data.user;
-  };
-
-  const logout = () => {
-    setToken(null);
-    setCurrentUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
   };
 
   const fetchProducts = async () => {
@@ -99,7 +99,7 @@ export const StoreProvider = ({ children }) => {
       await axios.post(`${API_URL}/products`, product);
       fetchProducts();
       message.success('Product added');
-    } catch (e) {
+    } catch {
       message.error('Error adding product');
     }
   };
@@ -109,7 +109,7 @@ export const StoreProvider = ({ children }) => {
       await axios.put(`${API_URL}/products/${id}`, updatedFields);
       fetchProducts();
       message.success('Product updated');
-    } catch (e) {
+    } catch {
       message.error('Error updating product');
     }
   };
@@ -119,7 +119,7 @@ export const StoreProvider = ({ children }) => {
       await axios.delete(`${API_URL}/products/${id}`);
       fetchProducts();
       message.success('Product deleted');
-    } catch (e) {
+    } catch {
       message.error('Error deleting product');
     }
   };

@@ -18,7 +18,7 @@ const POS = () => {
         try {
             await initiateCheckout();
             setPaymentModalVisible(true);
-        } catch (e) {
+        } catch {
             // Error managed in store.jsx
         } finally {
             setIsProcessing(false);
@@ -33,7 +33,7 @@ const POS = () => {
                 message.success('Payment succeeded! Order placed.');
                 setDrawerVisible(false);
             }
-        } catch (err) {
+        } catch {
             if (outcome === 'failure') {
                 message.error('Payment failed!');
             } else {
@@ -72,6 +72,7 @@ const POS = () => {
                                 title={product.name}
                                 actions={[
                                     <Button
+                                        key="add"
                                         type="primary"
                                         disabled={remainingStock <= 0}
                                         onClick={() => addToCart(product)}
@@ -115,10 +116,10 @@ const POS = () => {
                     renderItem={item => (
                         <List.Item
                             actions={[
-                                <Button size="small" icon={<MinusOutlined />} onClick={() => updateCartQty(item.id, item.qty - 1)} />,
-                                <Text>{item.qty}</Text>,
-                                <Button size="small" icon={<PlusOutlined />} onClick={() => updateCartQty(item.id, item.qty + 1)} disabled={products.find(p => p.id === item.id)?.stock <= item.qty} />,
-                                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeFromCart(item.id)} />
+                                <Button key="minus" size="small" icon={<MinusOutlined />} onClick={() => updateCartQty(item.id, item.qty - 1)} />,
+                                <Text key="qty">{item.qty}</Text>,
+                                <Button key="plus" size="small" icon={<PlusOutlined />} onClick={() => updateCartQty(item.id, item.qty + 1)} disabled={products.find(p => p.id === item.id)?.stock <= item.qty} />,
+                                <Button key="del" size="small" danger icon={<DeleteOutlined />} onClick={() => removeFromCart(item.id)} />
                             ]}
                         >
                             <List.Item.Meta

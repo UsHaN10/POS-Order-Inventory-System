@@ -1,6 +1,6 @@
 import { Layout, Typography, ConfigProvider, theme, Button, Tabs } from 'antd';
 import { StoreProvider, useStore } from './store';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Inventory from './components/Inventory';
 import POS from './components/POS';
 import Orders from './components/Orders';

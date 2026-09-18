@@ -21,7 +21,7 @@ export default function UserManagement() {
         try {
             const { data } = await axios.get(`${API_URL}/users`);
             setUsers(data);
-        } catch (error) {
+        } catch {
             message.error('Failed to load users');
         }
         setLoading(false);
